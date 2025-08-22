@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Stream Deck Controller</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-main: #0a0a0a;
+            --bg-panel: #1a1a1a;
+            --bg-mixer: #2a2a2a;
+            --accent-blue: #00bfff;
+            --accent-cyan: #00ffff;
+            --accent-purple: #8a2be2;
+            --neon-blue: #00d4ff;
+            --text-primary: #ffffff;
+            --text-secondary: #cccccc;
+            --border-color: #333333;
+            --slider-track: #1a1a1a;
+            --slider-bg: linear-gradient(to top, #ff0000, #ffff00, #00ff00);
+            --led-blue: #00bfff;
+        }
+
+        [data-theme="light"] {
+            --bg-main: #f5f5f5;
+            --bg-panel: #ffffff;
+            --bg-mixer: #e8e8e8;
+            --accent-blue: #0066cc;
+            --accent-cyan: #0099cc;
+            --accent-purple: #6633cc;
+            --neon-blue: #0088cc;
+            --text-primary: #000000;
+            --text-secondary: #333333;
+            --border-color: #cccccc;
+            --slider-track: #dddddd;
+            --led-blue: #0066cc;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: auto;
+        }
+
+        .controller-wrapper {
+            display: flex;
+            min-height: 100vh;
+            background: radial-gradient(ellipse at center, #001122 0%, var(--bg-main) 100%);
+        }
+
+        /* Left Mixer Panel */
+        .mixer-panel {
+            width: 350px;
+            background: linear-gradient(145deg, var(--bg-panel), var(--bg-mixer));
+            border-right: 3px solid var(--neon-blue);
+            padding: 20px;
+            box-shadow: 3px 0 20px rgba(0, 212, 255, 0.3);
+        }
+
+        .brand-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px 0;
+            border-bottom: 2px solid var(--neon-blue);
+            background: linear-gradient(145deg, var(--bg-mixer), var(--bg-panel));
+            border-radius: 10px;
+        }
+
+        .brand-title {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--neon-blue);
+            text-shadow: 0 0 15px var(--neon-blue);
+            margin-bottom: 5px;
+            letter-spacing: 2px;
+        }
+
+        .brand-subtitle {
+            font-size: 0.9rem;
+            color: var(--accent-cyan);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        /* Mixer Controls */
+        .mixer-section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 0.9rem;
+            color: var(--neon-blue);
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-align: center;
+            padding: 8px;
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 5px;
+            border: 1px solid var(--neon-blue);
+        }
+
+        .mixer-channels {
+            display: flex;
+            justify-content: space-around;
+            gap: 15px;
+        }
+
+        .mixer-channel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: linear-gradient(145deg, var(--bg-mixer), var(--bg-panel));
+            padding: 20px 10px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            min-height: 300px;
+        }
+
+        .channel-label {
+            color: var(--neon-blue);
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        /* Professional Audio Mixer Style Slider */
+        .vertical-slider-container {
+            position: relative;
+            width: 80px;
+            height: 350px;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .level-meter {
+            width: 30px;
+            height: 350px;
+            background: var(--bg-main);
+            border: 2px solid var(--border-color);
+            border-radius: 15px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .meter-segments {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 2px;
+            padding: 3px;
+        }
+
+        .meter-segment {
+            width: 100%;
+            height: 8px;
+            border-radius: 2px;
+            opacity: 0.3;
+            transition: opacity 0.1s ease;
+        }
+
+        .meter-segment.green {
+            background: #00ff41;
+        }
+
+        .meter-segment.yellow {
+            background: #ffff00;
+        }
+
+        .meter-segment.red {
+            background: #ff0040;
+        }
+
+        .meter-segment.active {
+            opacity: 1;
+            box-shadow: 0 0 3px currentColor;
+        }
+
+        .slider-wrapper {
+            position: relative;
+            width: 40px;
+            height: 350px;
+        }
+
+        .vertical-slider {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%) rotate(-90deg);
+            transform-origin: center;
+            width: 350px;
+            height: 40px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .vertical-slider::-webkit-slider-track {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(to right, 
+                #ff0040 0%, 
+                #ff0040 10%, 
+                #ffff00 10%, 
+                #ffff00 70%, 
+                #00ff41 70%, 
+                #00ff41 100%);
+            border: 1px solid var(--border-color);
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
+        }
+
+        .vertical-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 35px;
+            border-radius: 8px;
+            background: linear-gradient(145deg, #ffffff, #cccccc);
+            border: 2px solid var(--neon-blue);
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.8), 0 2px 5px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        .vertical-slider::-webkit-slider-thumb:hover {
+            background: linear-gradient(145deg, #ffffff, #e0e0e0);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 1), 0 3px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Firefox slider styles */
+        .vertical-slider::-moz-range-track {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(to right, 
+                #ff0040 0%, 
+                #ff0040 10%, 
+                #ffff00 10%, 
+                #ffff00 70%, 
+                #00ff41 70%, 
+                #00ff41 100%);
+            border: 1px solid var(--border-color);
+        }
+
+        .vertical-slider::-moz-range-thumb {
+            width: 20px;
+            height: 35px;
+            border-radius: 8px;
+            background: linear-gradient(145deg, #ffffff, #cccccc);
+            border: 2px solid var(--neon-blue);
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.8);
+        }
+
+        .slider-value {
+            background: var(--bg-main);
+            color: var(--neon-blue);
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 0.8rem;
+            border: 1px solid var(--neon-blue);
+            text-align: center;
+            min-width: 50px;
+            margin-top: 10px;
+        }
+
+        /* Stop Button - Large and Easy to Press */
+        .stop-button {
+            background: linear-gradient(145deg, #ff4444, #cc3333);
+            border: 3px solid #ff6666;
+            border-radius: 15px;
+            padding: 20px 30px;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 5px 20px rgba(255, 68, 68, 0.4);
+        }
+
+        .stop-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .stop-button:hover::before {
+            left: 100%;
+        }
+
+        .stop-button:hover {
+            box-shadow: 0 0 30px #ff4444;
+            transform: translateY(-3px) scale(1.02);
+            background: linear-gradient(145deg, #ff6666, #ee4444);
+        }
+
+        .stop-button:active {
+            transform: translateY(-1px) scale(0.98);
+        }
+
+        /* Main Stream Deck Area */
+        .main-controller {
+            flex: 1;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .controller-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(145deg, var(--bg-panel), var(--bg-mixer));
+            border-radius: 15px;
+            border: 2px solid var(--neon-blue);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .status-led {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: var(--neon-blue);
+            box-shadow: 0 0 15px var(--neon-blue);
+            animation: pulse-blue 2s infinite;
+        }
+
+        @keyframes pulse-blue {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* Theme Toggle Button in Header */
+        .theme-toggle {
+            background: linear-gradient(145deg, var(--bg-mixer), var(--bg-panel));
+            border: 2px solid var(--neon-blue);
+            border-radius: 10px;
+            padding: 10px 20px;
+            color: var(--neon-blue);
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .theme-toggle::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .theme-toggle:hover::before {
+            left: 100%;
+        }
+
+        .theme-toggle:hover {
+            box-shadow: 0 0 20px var(--neon-blue);
+            transform: translateY(-2px);
+            background: rgba(0, 212, 255, 0.1);
+        }
+
+        /* Stream Deck Style Pads */
+        .stream-deck-container {
+            flex: 1;
+            background: linear-gradient(145deg, var(--bg-panel), var(--bg-mixer));
+            border-radius: 20px;
+            padding: 40px;
+            border: 3px solid var(--neon-blue);
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
+        }
+
+        .pads-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 20px;
+            height: 100%;
+            min-height: 600px;
+        }
+
+        .stream-pad {
+            background: linear-gradient(145deg, #1a2040, #2a3060);
+            border: 3px solid var(--border-color);
+            border-radius: 20px;
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            min-height: 120px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+        }
+
+        .stream-pad::before {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            right: 3px;
+            height: 35%;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.1), transparent);
+            border-radius: 15px;
+        }
+
+        .stream-pad:hover {
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.6);
+            transform: translateY(-5px) scale(1.02);
+        }
+
+        .stream-pad:active {
+            transform: translateY(-2px) scale(0.98);
+        }
+
+        .stream-pad.playing {
+            background: linear-gradient(145deg, var(--neon-blue), var(--accent-cyan));
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 40px var(--neon-blue);
+            animation: stream-flash 0.8s ease-in-out;
+            color: var(--bg-main);
+        }
+
+        @keyframes stream-flash {
+            0%, 100% { 
+                box-shadow: 0 0 40px var(--neon-blue);
+                transform: scale(1);
+            }
+            50% { 
+                box-shadow: 0 0 60px var(--neon-blue), 0 0 80px var(--accent-cyan);
+                transform: scale(1.05);
+            }
+        }
+
+        .pad-number {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 212, 255, 0.8);
+            color: var(--bg-main);
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            font-weight: bold;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .pad-icon {
+            font-size: 2rem;
+            margin-bottom: 8px;
+            opacity: 0.8;
+        }
+
+        .pad-title {
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+        }
+
+        .pad-path {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-align: center;
+            opacity: 0.7;
+            word-break: break-all;
+            padding: 0 10px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .controller-wrapper {
+                flex-direction: column;
+            }
+            
+            .mixer-panel {
+                width: 100%;
+                height: auto;
+                padding: 15px;
+            }
+            
+            .mixer-channels {
+                flex-direction: row;
+                gap: 10px;
+            }
+            
+            .mixer-channel {
+                min-height: 200px;
+                padding: 15px 8px;
+            }
+            
+            .vertical-slider-container {
+                height: 150px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .pads-grid {
+                grid-template-columns: repeat(3, 1fr);
+                grid-template-rows: repeat(6, 1fr);
+                gap: 15px;
+                min-height: 500px;
+            }
+            
+            .main-controller {
+                padding: 15px;
+            }
+            
+            .stream-deck-container {
+                padding: 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .pads-grid {
+                grid-template-columns: repeat(2, 1fr);
+                grid-template-rows: repeat(8, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="controller-wrapper">
+        <!-- Left Mixer Panel -->
+        <div class="mixer-panel">
+            <div class="brand-header">
+                <div class="brand-title">STREAM DECK</div>
+                <div class="brand-subtitle">PRO CONTROLLER</div>
+            </div>
+
+            <!-- Master Volume with LED Meter -->
+            <div class="mixer-section">
+                <div class="section-title">Master Volume</div>
+                <div class="mixer-channels">
+                    <div class="mixer-channel" style="width: 100%; max-width: 120px; margin: 0 auto;">
+                        <div class="channel-label">VOLUME</div>
+                        <div class="vertical-slider-container">
+                            <div class="level-meter">
+                                <div class="meter-segments" id="meterSegments">
+                                    <!-- LED segments will be generated here -->
+                                </div>
+                            </div>
+                            <div class="slider-wrapper">
+                                <input type="range" class="vertical-slider" id="masterVolume" min="0" max="100" value="70">
+                            </div>
+                        </div>
+                        <div class="slider-value" id="masterValue">70</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stop All Button -->
+            <div class="mixer-section">
+                <div class="section-title">Controls</div>
+                <button class="stop-button" onclick="stopAllSounds()">
+                    ⏹️ STOP ALL SOUNDS
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Stream Deck Controller -->
+        <div class="main-controller">
+            <div class="controller-header">
+                <h1>🎮 16-PAD STREAM CONTROLLER</h1>
+                <div class="status-indicator">
+                    <span>STATUS:</span>
+                    <div class="status-led"></div>
+                    <span>ONLINE</span>
+                    <button class="theme-toggle" onclick="toggleTheme()">
+                        <span id="themeText">🌙 LIGHT MODE</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="stream-deck-container">
+                <div class="pads-grid" id="padsGrid">
+                    <!-- 16 Stream Deck Pads will be generated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let masterVolumeValue = 0.7;
+        let currentAudios = [];
+        let fadeInterval = null;
+
+        // Predefined sound paths and pad configurations
+        const padConfigs = [
+            { name: 'สวนสยาม', path: './sounds/สวนสยาม.mp3', icon: '🎢', color: '#00bfff' },
+            { name: 'ตบมุก', path: '/sounds/ตบมุก.mp3', icon: '📯', color: '#ff6600' },
+            { name: 'ตบมุก2', path: './sounds/sounds/drumroll.mp3', icon: '🪘', color: '#ffff00' },
+            { name: 'เงียบ จิ้งหรีด', path: './sounds/ตบมุก2.mp3', icon: '🦗', color: '#00ff00' },
+            { name: 'ตึ้งโป๊ะ', path: './sounds/ตึงโป๊ะ.mp3', icon: '🥁', color: '#ff00ff' },
+            { name: 'ถูกต้อง', path: './sounds/ถูกต้อง.mp3', icon: '✅', color: '#00ffff' },
+            { name: 'ผิด', path: './sounds/ผิด.mp3', icon: '❌', color: '#ff9900' },
+            { name: 'ปรบมือ', path: './sounds/ปรบมือ.mp3', icon: '👏🏼', color: '#9900ff' },
+            { name: 'แท่น แท่น แทนน', path: '.แท่น_แท่น_แทนนน.mp3', icon: '💰', color: '#ffcc00' },
+            { name: 'สตั้น', path: './sounds/สตั้น.mp3', icon: '💔', color: '#ff3333' },
+            { name: 'วิ้ง', path: './sounds/วิ้ง.mp3', icon: '✨', color: '#33ff33' },
+            { name: 'สงสัย', path: './sounds/สงสัย.mp3', icon: '💭', color: '#66ccff' },
+            { name: 'ว้าวว', path: './sounds/ว้าวว.mp3', icon: '😲', color: '#ff6666' },
+            { name: 'โคนันน', path: './sounds/โคนัน.mp3', icon: '🔎', color: '#cccccc' },
+            { name: 'มอบรางวัล', path: './sounds/มอบรางวัล.mp3', icon: '🔔', color: '#ffff66' },
+            { name: 'กริ่ง ขายของ', path: './sounds/กริ่งขายของ.mp3', icon: '🔔', color: '#ff4400' }
+        ];
+
+        // Initialize LED meter segments
+        function initializeLEDMeter() {
+            const meterContainer = document.getElementById('meterSegments');
+            meterContainer.innerHTML = '';
+            
+            // Create 40 LED segments
+            for (let i = 0; i < 40; i++) {
+                const segment = document.createElement('div');
+                segment.className = 'meter-segment';
+                
+                // Color based on position (bottom to top)
+                if (i < 28) {
+                    segment.classList.add('green'); // Bottom 70% green
+                } else if (i < 36) {
+                    segment.classList.add('yellow'); // Next 20% yellow  
+                } else {
+                    segment.classList.add('red'); // Top 10% red
+                }
+                
+                meterContainer.appendChild(segment);
+            }
+        }
+
+        // Update LED meter based on volume
+        function updateLEDMeter(volume) {
+            const segments = document.querySelectorAll('.meter-segment');
+            const activeSegments = Math.floor((volume / 100) * segments.length);
+            
+            segments.forEach((segment, index) => {
+                if (index < activeSegments) {
+                    segment.classList.add('active');
+                } else {
+                    segment.classList.remove('active');
+                }
+            });
+        }
+
+        // Animate meter during playback
+        function animateMeterDuringPlayback() {
+            if (currentAudios.length > 0) {
+                // Simulate audio level animation
+                const randomLevel = 50 + Math.random() * 50; // Random between 50-100
+                updateLEDMeter(randomLevel);
+                
+                setTimeout(() => {
+                    updateLEDMeter(masterVolumeValue * 100);
+                }, 100);
+            }
+        }
+
+        // Initialize
+        function initializePads() {
+            renderPads();
+            setupVolumeControls();
+            initializeLEDMeter();
+            updateLEDMeter(70); // Initial meter level
+        }
+
+        // Render all pads
+        function renderPads() {
+            const padsGrid = document.getElementById('padsGrid');
+            padsGrid.innerHTML = '';
+
+            for (let i = 0; i < 16; i++) {
+                const padElement = document.createElement('div');
+                padElement.className = 'stream-pad';
+                
+                const config = padConfigs[i];
+                padElement.style.background = `linear-gradient(145deg, ${config.color}30, ${config.color}10)`;
+                padElement.style.borderColor = config.color;
+                
+                padElement.innerHTML = `
+                    <div class="pad-number">${i + 1}</div>
+                    <div class="pad-icon">${config.icon}</div>
+                    <div class="pad-title">${config.name}</div>
+                    <div class="pad-path">${config.path.split('/').pop()}</div>
+                `;
+                
+                padElement.onclick = () => playSound(i);
+
+                padsGrid.appendChild(padElement);
+            }
+        }
+
+        // Play sound with fade in
+        function playSound(index) {
+            const config = padConfigs[index];
+            if (!config) return;
+
+            const audio = new Audio(config.path);
+            audio.volume = masterVolumeValue;
+            
+            currentAudios.push(audio);
+            
+            // Visual feedback
+            const padElements = document.querySelectorAll('.stream-pad');
+            const padElement = padElements[index];
+            padElement.classList.add('playing');
+
+            audio.play().catch(error => {
+                console.error('Cannot play audio:', error);
+                alert(`❌ Cannot play: ${config.path}`);
+                // Remove from array if failed to play
+                currentAudios = currentAudios.filter(a => a !== audio);
+            });
+
+            // Animate LED meter during playback
+            const meterAnimation = setInterval(() => {
+                animateMeterDuringPlayback();
+            }, 150);
+
+            audio.addEventListener('ended', () => {
+                padElement.classList.remove('playing');
+                currentAudios = currentAudios.filter(a => a !== audio);
+                clearInterval(meterAnimation);
+                updateLEDMeter(masterVolumeValue * 100); // Reset to normal level
+            });
+
+            // Remove playing class after animation
+            setTimeout(() => {
+                padElement.classList.remove('playing');
+            }, 800);
+        }
+
+        // Toggle theme
+        function toggleTheme() {
+            const body = document.body;
+            const currentTheme = body.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            
+            body.setAttribute('data-theme', newTheme);
+            
+            document.getElementById('themeText').innerHTML = 
+                newTheme === 'light' ? '🌙 DARK MODE' : '☀️ LIGHT MODE';
+        }
+
+        // Load theme
+        function loadTheme() {
+            const savedTheme = 'dark'; // Default to dark theme
+            document.body.setAttribute('data-theme', savedTheme);
+            document.getElementById('themeText').innerHTML = '☀️ LIGHT MODE';
+        }
+
+        // Setup volume controls
+        function setupVolumeControls() {
+            const masterSlider = document.getElementById('masterVolume');
+            const masterDisplay = document.getElementById('masterValue');
+            
+            masterSlider.addEventListener('input', (e) => {
+                masterVolumeValue = e.target.value / 100;
+                masterDisplay.textContent = e.target.value;
+                updateLEDMeter(e.target.value);
+                
+                // Update volume of currently playing sounds
+                currentAudios.forEach(audio => {
+                    audio.volume = masterVolumeValue;
+                });
+            });
+        }
+
+        // Stop all sounds with fade out effect
+        function stopAllSounds() {
+            if (currentAudios.length === 0) return;
+
+            // Clear any existing fade interval
+            if (fadeInterval) {
+                clearInterval(fadeInterval);
+            }
+
+            const fadeDuration = 1000; // 1 second fade
+            const fadeSteps = 20;
+            const fadeStep = fadeDuration / fadeSteps;
+            let currentStep = 0;
+
+            // Store initial volumes
+            const initialVolumes = currentAudios.map(audio => audio.volume);
+
+            fadeInterval = setInterval(() => {
+                currentStep++;
+                const fadeProgress = currentStep / fadeSteps;
+                const fadeMultiplier = 1 - fadeProgress;
+
+                currentAudios.forEach((audio, index) => {
+                    if (audio && !audio.ended) {
+                        audio.volume = initialVolumes[index] * fadeMultiplier;
+                    }
+                });
+
+                if (currentStep >= fadeSteps) {
+                    // Fade complete - stop all sounds
+                    currentAudios.forEach(audio => {
+                        if (audio && !audio.ended) {
+                            audio.pause();
+                            audio.currentTime = 0;
+                        }
+                    });
+                    currentAudios = [];
+                    
+                    // Remove all playing classes
+                    document.querySelectorAll('.stream-pad.playing').forEach(pad => {
+                        pad.classList.remove('playing');
+                    });
+                    
+                    // Reset LED meter
+                    updateLEDMeter(masterVolumeValue * 100);
+                    
+                    clearInterval(fadeInterval);
+                    fadeInterval = null;
+                }
+            }, fadeStep);
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Numbers 1-9, 0 for pads 1-10
+            if (e.key >= '1' && e.key <= '9') {
+                const index = parseInt(e.key) - 1;
+                playSound(index);
+            } else if (e.key === '0') {
+                playSound(9);
+            }
+            
+            // Q, W, E, R, T, Y for pads 11-16
+            const keyMap = {
+                'q': 10, 'w': 11, 'e': 12, 'r': 13, 't': 14, 'y': 15
+            };
+            if (keyMap[e.key.toLowerCase()]) {
+                playSound(keyMap[e.key.toLowerCase()]);
+            }
+            
+            // Space to stop all sounds
+            if (e.key === ' ') {
+                e.preventDefault();
+                stopAllSounds();
+            }
+        });
+
+        // Initialize everything on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTheme();
+            initializePads();
+        });
+    </script>
+</body>
+</html>
